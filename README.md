@@ -100,17 +100,6 @@ Copy `.env.example` to `.env` in the root directory:
 cp .env.example .env
 ```
 
-Adjust the values in `.env` as needed:
-```env
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/sai_punjabi_db
-JWT_SECRET=super_secret_jwt_key_at_least_32_characters
-ADMIN_EMAIL=admin@saipunjabifoods.com
-ADMIN_PASSWORD=Admin@SaiPunjabi2026!
-RAZORPAY_KEY_ID=rzp_test_placeholder_id
-RAZORPAY_KEY_SECRET=rzp_test_placeholder_secret
-```
-
 ### 3. Build Shared Packages
 ```bash
 npm run build --workspace=packages/shared
