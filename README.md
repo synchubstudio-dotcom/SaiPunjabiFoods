@@ -128,11 +128,6 @@ npm run dev:web
 
 ---
 
-## Default Credentials (from Seed)
-
-| Role | Email | Password |
-|---|---|---|
-| **Administrator** | `admin@saipunjabifoods.com` | `Admin@SaiPunjabi2026!` (configurable via `ADMIN_PASSWORD`) |
 
 ---
 
