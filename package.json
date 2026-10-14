@@ -1,0 +1,29 @@
+{
+  "name": "sai-punjabi-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sai Punjabi - Authentic Punjabi Restaurant & Management Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev": "npm run dev --workspace=apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed --workspace=apps/api"
+  },
+  "keywords": [
+    "restaurant",
+    "punjabi-food",
+    "nextjs",
+    "express",
+    "mongodb",
+    "socket.io",
+    "razorpay"
+  ],
+  "author": "Sai Punjabi Engineering",
+  "license": "ISC"
+}
