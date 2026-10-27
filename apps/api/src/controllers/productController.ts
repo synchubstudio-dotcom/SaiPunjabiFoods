@@ -3,6 +3,7 @@ import { Product } from '../models/Product';
 import { Category } from '../models/Category';
 import { HTTP_STATUS } from '../constants';
 import { AppError } from '../middleware/errorHandler';
+import { emitMenuUpdate } from '../sockets/orderSocket';
 
 const slugify = (text: string) =>
   text
@@ -178,6 +179,9 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
     }
 
     let slug = req.body.slug ? slugify(req.body.slug) : slugify(name);
+    if (!slug) {
+      slug = `dish-${Date.now().toString().slice(-6)}`;
+    }
     const existing = await Product.findOne({ slug });
     if (existing) {
       slug = `${slug}-${Date.now().toString().slice(-4)}`;
@@ -188,10 +192,16 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       slug,
     });
 
+    const populated = await Product.findById(product._id).populate('categoryId', 'name slug');
+    const resultProduct = populated || product;
+
+    // Real-time broadcast: Immediately notifies menu and all active clients
+    emitMenuUpdate('create', resultProduct);
+
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
       message: 'Product created successfully',
-      data: { product },
+      data: { product: resultProduct },
     });
   } catch (error) {
     next(error);
@@ -224,6 +234,9 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       throw new AppError('Product not found', HTTP_STATUS.NOT_FOUND);
     }
 
+    // Real-time broadcast
+    emitMenuUpdate('update', product);
+
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Product updated successfully',
@@ -244,6 +257,9 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
       throw new AppError('Product not found', HTTP_STATUS.NOT_FOUND);
     }
 
+    // Real-time broadcast
+    emitMenuUpdate('delete', { _id: id });
+
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Product deleted successfully',
@@ -261,7 +277,7 @@ export const toggleProductAvailability = async (
 ) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await Product.findById(id).populate('categoryId', 'name slug');
 
     if (!product) {
       throw new AppError('Product not found', HTTP_STATUS.NOT_FOUND);
@@ -269,6 +285,9 @@ export const toggleProductAvailability = async (
 
     product.isAvailable = !product.isAvailable;
     await product.save();
+
+    // Real-time broadcast
+    emitMenuUpdate('update', product);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,

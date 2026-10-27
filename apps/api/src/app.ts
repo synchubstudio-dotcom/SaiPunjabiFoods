@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -10,6 +11,7 @@ import { swaggerSpec } from './config/swagger';
 import { errorHandler, AppError } from './middleware/errorHandler';
 import { apiLimiter } from './middleware/rateLimiter';
 import { HTTP_STATUS } from './constants';
+import { handleOfflineRequest } from './services/offlineStore';
 
 // Route imports
 import authRoutes from './routes/authRoutes';
@@ -80,6 +82,7 @@ export const createApp = () => {
   app.get('/api/health', (_req: Request, res: Response) => {
     res.status(HTTP_STATUS.OK).json({
       status: 'healthy',
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
       timestamp: new Date().toISOString(),
       service: 'Sai Punjabi API',
       version: '1.0.0',
@@ -88,6 +91,14 @@ export const createApp = () => {
 
   // Swagger Documentation
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+  // Offline in-memory development fallback (enables immediate testing even without local MongoDB running)
+  app.use('/api/v1', (req: Request, res: Response, next: NextFunction) => {
+    if (mongoose.connection.readyState !== 1) {
+      return handleOfflineRequest(req, res, next);
+    }
+    next();
+  });
 
   // REST API Routes under /api/v1
   app.use('/api/v1/auth', authRoutes);

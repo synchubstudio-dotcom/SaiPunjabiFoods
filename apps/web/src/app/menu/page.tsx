@@ -6,11 +6,13 @@ import { Search, Filter, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { ProductCard } from '../../components/ProductCard';
 import { IProduct, ICategory } from '@sai-punjabi/shared';
 import { api } from '../../lib/api';
+import { useSocket } from '../../context/SocketContext';
 
 function MenuContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get('category') || '';
   const initialFeatured = searchParams.get('featured') || '';
+  const { socket } = useSocket();
 
   const [categories, setCategories] = useState<ICategory[]>([]);
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -37,8 +39,10 @@ function MenuContent() {
   }, []);
 
   // Fetch Products based on active filters
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
+  const fetchProducts = useCallback(async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams();
       if (selectedCategory) params.append('category', selectedCategory);
@@ -53,13 +57,35 @@ function MenuContent() {
     } catch (err) {
       console.error('Failed to fetch dishes', err);
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   }, [selectedCategory, searchQuery, vegetarianOnly, spiceLevel, sortBy, initialFeatured]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Real-time WebSocket listener: immediate updates when admin adds or modifies dishes
+  useEffect(() => {
+    if (!socket) return;
+    const handleMenuChange = () => {
+      fetchProducts(true);
+    };
+
+    socket.on('menu:changed', handleMenuChange);
+    socket.on('product:created', handleMenuChange);
+    socket.on('product:updated', handleMenuChange);
+    socket.on('product:deleted', handleMenuChange);
+
+    return () => {
+      socket.off('menu:changed', handleMenuChange);
+      socket.off('product:created', handleMenuChange);
+      socket.off('product:updated', handleMenuChange);
+      socket.off('product:deleted', handleMenuChange);
+    };
+  }, [socket, fetchProducts]);
 
   const clearFilters = () => {
     setSelectedCategory('');
