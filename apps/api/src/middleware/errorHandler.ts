@@ -69,6 +69,13 @@ export const errorHandler = (
     message = 'Authentication token expired. Please log in again.';
   }
 
+  // Handle Mongoose Connection / Buffering Timeout
+  if (err.name === 'MongooseError' && err.message?.includes('buffering timed out')) {
+    statusCode = HTTP_STATUS.SERVICE_UNAVAILABLE;
+    message =
+      'Database connection timed out. Please ensure MongoDB is running (e.g., net start MongoDB in Windows) or check your MONGODB_URI connection string.';
+  }
+
   // Structured Logging
   if (statusCode >= 500) {
     console.error(`[Server Error 500]`, err);

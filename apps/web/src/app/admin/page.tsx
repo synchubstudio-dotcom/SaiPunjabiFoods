@@ -27,6 +27,7 @@ import { useAuth } from '../../context/AuthContext';
 import { formatINR, formatDate, formatTime } from '../../lib/utils';
 import { api } from '../../lib/api';
 import { IOrder, IProduct, ICategory, IPromotion, IReview, IRestaurantSettings, OrderStatus } from '@sai-punjabi/shared';
+import { AddProductModal } from '../../components/AddProductModal';
 
 type AdminTab =
   | 'overview'
@@ -55,6 +56,7 @@ export default function AdminDashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState('');
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
   // Protect Admin route
   useEffect(() => {
@@ -145,6 +147,21 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Delete dish from menu
+  const handleDeleteProduct = async (productId: string, productName: string) => {
+    if (!confirm(`Are you sure you want to delete "${productName}" from the menu?`)) {
+      return;
+    }
+    try {
+      await api.delete(`/products/${productId}`);
+      setProducts((prev) => prev.filter((p) => p._id !== productId));
+      setActionMessage(`Dish "${productName}" removed from menu`);
+      setTimeout(() => setActionMessage(''), 3000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete dish');
+    }
+  };
+
   // Toggle customer active state
   const handleToggleCustomer = async (customerId: string) => {
     try {
@@ -175,14 +192,24 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <button
-          onClick={loadAllData}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Data</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsAddProductOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand-maroon-700 hover:bg-brand-maroon-800 text-white text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Food Item</span>
+          </button>
+
+          <button
+            onClick={loadAllData}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
       </div>
 
       {actionMessage && (
@@ -392,8 +419,20 @@ export default function AdminDashboardPage() {
       {/* TAB 3: PRODUCTS & DISHES */}
       {activeTab === 'products' && (
         <div className="p-6 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-xl font-bold text-stone-900">Menu Dish Catalogue</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-xl font-bold text-stone-900">Menu Dish Catalogue</h2>
+              <p className="text-xs text-stone-500">
+                Live catalogue items. Newly added dishes update immediately across all diners & menu pages.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsAddProductOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-maroon-700 hover:bg-brand-maroon-800 text-white text-xs font-bold shadow transition-all hover:scale-105 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Food Item</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -405,41 +444,82 @@ export default function AdminDashboardPage() {
                   <th className="py-3 px-4">Base Price</th>
                   <th className="py-3 px-4">Portions</th>
                   <th className="py-3 px-4">Kitchen Availability</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {products.map((prod) => (
-                  <tr key={prod._id} className="hover:bg-stone-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-stone-900">{prod.name}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          prod.isVegetarian ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {prod.isVegetarian ? 'Pure Veg' : 'Non-Veg'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-brand-maroon-900">{formatINR(prod.price)}</td>
-                    <td className="py-3 px-4">
-                      {prod.variants && prod.variants.length > 0
-                        ? prod.variants.map((v) => `${v.name} (₹${v.price})`).join(', ')
-                        : 'Standard'}
-                    </td>
-                    <td className="py-3 px-4">
+                {products.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-stone-500">
+                      <p className="font-semibold text-sm">No dishes found in menu catalogue</p>
                       <button
-                        onClick={() => handleToggleProductAvailability(prod._id)}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                          prod.isAvailable
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
-                        }`}
+                        onClick={() => setIsAddProductOpen(true)}
+                        className="mt-3 px-4 py-2 rounded-xl bg-brand-maroon-700 text-white font-bold text-xs"
                       >
-                        {prod.isAvailable ? 'In Stock (Available)' : 'Sold Out (Disabled)'}
+                        + Add First Food Item
                       </button>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  products.map((prod) => (
+                    <tr key={prod._id} className="hover:bg-stone-50/80 transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-bold text-stone-900 block">{prod.name}</span>
+                        {prod.shortDescription && (
+                          <span className="text-[11px] text-stone-400 line-clamp-1">
+                            {prod.shortDescription}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            prod.isVegetarian ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {prod.isVegetarian ? 'Pure Veg' : 'Non-Veg'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-bold text-brand-maroon-900">{formatINR(prod.price)}</td>
+                      <td className="py-3 px-4">
+                        {prod.variants && prod.variants.length > 0
+                          ? prod.variants.map((v) => `${v.name} (₹${v.price})`).join(', ')
+                          : 'Standard'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => handleToggleProductAvailability(prod._id)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                            prod.isAvailable
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                          }`}
+                        >
+                          {prod.isAvailable ? 'In Stock (Available)' : 'Sold Out (Disabled)'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/menu/${prod.slug}`}
+                            target="_blank"
+                            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+                            title="Preview Dish"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteProduct(prod._id, prod.name)}
+                            className="p-1.5 rounded-lg text-red-400 hover:text-red-700 hover:bg-red-50 transition-colors"
+                            title="Delete Dish"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -598,6 +678,19 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Add Product Modal */}
+      <AddProductModal
+        isOpen={isAddProductOpen}
+        onClose={() => setIsAddProductOpen(false)}
+        categories={categories}
+        onSuccess={(newProduct) => {
+          setProducts((prev) => [newProduct, ...prev]);
+          setActiveTab('products');
+          setActionMessage(`Dish "${newProduct.name}" added to menu successfully!`);
+          setTimeout(() => setActionMessage(''), 4000);
+        }}
+      />
     </div>
   );
 }

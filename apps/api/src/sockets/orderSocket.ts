@@ -59,3 +59,9 @@ export const emitNewOrder = (orderData: any) => {
   if (!io) return;
   io.to('admin:orders').emit('order:created', orderData);
 };
+
+export const emitMenuUpdate = (type: 'create' | 'update' | 'delete', product: any) => {
+  if (!io) return;
+  io.emit('menu:changed', { type, product });
+  io.emit(`product:${type}d`, product);
+};
